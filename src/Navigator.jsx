@@ -1,22 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import Dialog from './components/Dialog.jsx';
 import { demoIssueProvider } from './data/issueProvider.js';
 import { estimateIssue, reviewEstimate, toggleIssue, togglePage } from './estimation.js';
 
 const columns = { key: 'Issue key', summary: 'Summary', type: 'Issue type', status: 'Status', priority: 'Priority', assignee: 'Assignee', points: 'Existing story points', originalEstimateHours: 'Existing estimated hours' };
 const format = value => value ?? 'Not set';
 
-function Dialog({ children, title, close, drawer = false }) {
-  const dialog = useRef(null);
-  useEffect(() => {
-    const previous = document.activeElement;
-    dialog.current.showModal();
-    return () => { previous?.focus(); };
-  }, []);
-  return <dialog ref={dialog} className={drawer ? 'detail-drawer' : 'review-dialog'} aria-label={title} onCancel={close} onClick={event => { if (event.target === dialog.current) close(); }}><div className="dialog-content"><button className="modal-close icon-button" aria-label="Close panel" onClick={close}><X size={20} /></button>{children}</div></dialog>;
-}
-
-export default function Navigator({ jql, provider = demoIssueProvider, onSummary }) {
+export default function Navigator({ jql, searchId = 0, provider = demoIssueProvider, onSummary }) {
   const [status, setStatus] = useState('All statuses');
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
@@ -36,7 +26,7 @@ export default function Navigator({ jql, provider = demoIssueProvider, onSummary
   const all = data.issues.length > 0 && data.issues.every(issue => selected.has(issue.key));
   const some = data.issues.some(issue => selected.has(issue.key));
   useEffect(() => { if (selectAll.current) selectAll.current.indeterminate = some && !all; }, [some, all]);
-  useEffect(() => { estimateRequest.current++; setEstimating(false); setPage(0); setSelected(new Set()); setResults([]); setReview(false); }, [jql, status]);
+  useEffect(() => { estimateRequest.current++; setEstimating(false); setPage(0); setSelected(new Set()); setResults([]); setReview(false); }, [jql, status, searchId]);
   useEffect(() => {
     const id = ++request.current;
     setBusy(true);
@@ -47,7 +37,7 @@ export default function Navigator({ jql, provider = demoIssueProvider, onSummary
       onSummary({ total: response.total, ...response.summary });
     }).catch(failure => { if (request.current === id) { setError(failure.message); setData({ issues: [], total: 0 }); onSummary({ total: 0, points: 0, ready: 0 }); } }).finally(() => { if (request.current === id) setBusy(false); });
     return () => { request.current++; };
-  }, [jql, status, page, size, provider, onSummary]);
+  }, [jql, status, searchId, page, size, provider, onSummary]);
   async function openDetail(key) {
     const id = ++detailRequest.current;
     setDetail({ loading: true });
